@@ -32,52 +32,69 @@ export class MessageBroker {
   }
 
   private handleIncomingMessage(event: ChannelEvent) {
-    if (!this.subscriptions.has(event.topic)) {
-      // Discard message if no subscribers
+    if (!this.hasSubscribers(event)) {
       return;
     }
+    this.storeMessage(event);
+    this.messageSubscribers(event);
+  }
 
-    const topicSubscriptions = this.subscriptions.get(event.topic)!;
-    const subscribers = Array.from(topicSubscriptions);
+  private hasSubscribers(event: ChannelEvent) {
+    return this.subscriptions.has(event?.topic);
+  }
 
+  private storeMessage(event: ChannelEvent) {
     if (!this.storedMessages.has(event.topic)) {
-      // Store message if no stored messages for the topic
       this.storedMessages.set(event.topic, [event]);
     } else {
-      // Add message to the stored messages for the topic
       const storedMessages = this.storedMessages.get(event.topic)!;
       storedMessages.push(event);
     }
+  }
 
-    // Forward message to subscribers
+  private messageSubscribers(event: ChannelEvent) {
+    const topicSubscriptions = this.subscriptions.get(event.topic)!;
+    const subscribers = Array.from(topicSubscriptions);
     subscribers.forEach((callback) => {
-      if (event.sender !== this.getChannelName(callback)) {
+      if (event.sender !== this.getChannelName()) {
         callback(event);
       }
     });
   }
-
-  private getChannelName(callback?: Function): string {
-    const widgetName = callback?.name || "default";
-    return `${widgetName}-${window.location.pathname}`;
+  private saveSubscriptionToTopic(topic: string) {
+    if (!this.subscriptions.has(topic)) {
+      this.subscriptions.set(topic, new Set<(event: ChannelEvent) => void>());
+    }
   }
 
-  public subscribe(topic: string, callback: (message: any) => void): boolean {
-    if (!this.subscriptions.has(topic)) {
-      this.subscriptions.set(topic, new Set<(message: any) => void>());
-    }
+  private sendStoredMessages(topic: string, callback: (event: ChannelEvent) => void) {
+    const storedMessages = this.storedMessages.get(topic)!;
+    storedMessages.forEach((message) => {
+      if (message.sender !== this.getChannelName()) {
+        callback(message);
+      }
+    });
+  }
+
+  private getChannelName(): string {
+    return `${window.location.pathname}`;
+  }
+
+  /**
+   * Subscribe to a topic
+   * @param topic
+   * @param callback
+   * @returns boolean
+   */
+  public subscribe(topic: string, callback: (event: ChannelEvent) => void): boolean {
+    this.saveSubscriptionToTopic(topic);
     const topicSubscriptions = this.subscriptions.get(topic)!;
 
     if (!topicSubscriptions.has(callback)) {
       topicSubscriptions.add(callback);
 
       if (this.storedMessages.has(topic)) {
-        const storedMessages = this.storedMessages.get(topic)!;
-        storedMessages.forEach((message) => {
-          if (message.sender !== this.getChannelName(callback)) {
-            callback(message);
-          }
-        });
+        this.sendStoredMessages(topic, callback);
       }
 
       return true;
@@ -85,7 +102,17 @@ export class MessageBroker {
     return false;
   }
 
+  /**
+   * Publish a message to a topic
+   * @param topic
+   * @param message
+   * @param senderOverride
+   */
   public publish(topic: string, message: string, senderOverride?: string): void {
-    this.channel.postMessage({ topic, message, sender: senderOverride || this.getChannelName() });
+    this.channel.postMessage({
+      topic,
+      message,
+      sender: senderOverride || this.getChannelName(),
+    });
   }
 }

@@ -1,8 +1,14 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 export enum StorageType {
-  LocalStorage = 'localStorage',
-  SessionStorage = 'sessionStorage',
+  LocalStorage = "localStorage",
+  SessionStorage = "sessionStorage",
 }
 
+/**
+ * A class wrapping storing data in local or session Storage
+ */
 export class StorageManager {
   private storage: Storage;
 
@@ -14,6 +20,11 @@ export class StorageManager {
     }
   }
 
+  /**
+   * Get Item from Storage
+   * @param key
+   * @returns any
+   */
   public getItem(key: string): any {
     const item = this.storage.getItem(key);
     if (item) {
@@ -26,6 +37,11 @@ export class StorageManager {
     return null;
   }
 
+  /**
+   * Set Item in Storage
+   * @param key
+   * @param value
+   */
   public setItem(key: string, value: any): void {
     try {
       const serializedValue = JSON.stringify(value);
@@ -35,10 +51,17 @@ export class StorageManager {
     }
   }
 
+  /**
+   * Remove Item from Storage
+   * @param key
+   */
   public removeItem(key: string): void {
     this.storage.removeItem(key);
   }
 
+  /**
+   * Clear Storage
+   */
   public clear(): void {
     this.storage.clear();
   }
