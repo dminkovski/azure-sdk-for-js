@@ -8,8 +8,12 @@ export interface AckEvent extends ChannelEvent {
   needsAck: boolean;
 }
 
+export interface AckSettings {
+  retryAttempts: number;
+  retryIntervalMS: number;
+}
 /**
- * A class wrapping broadcasting communication between widgets using Ack Protocol
+ * A class wrapping broadcasting communication between widgets using intervals and retry attempts and Message Broker
  */
 export class AckBroker {
   private broker: MessageBroker;
@@ -17,9 +21,13 @@ export class AckBroker {
   private RETRY_ATTEMPTS: number;
   private RETRY_INTERVALMS: number;
 
-  constructor(channelName?: string) {
-    this.RETRY_ATTEMPTS = 3;
-    this.RETRY_INTERVALMS = 1500;
+  constructor(channelName?: string, settings?: AckSettings) {
+    const defaultSettings: AckSettings = { retryAttempts: 3, retryIntervalMS: 1500 };
+    const appliedSettings = settings ? { ...defaultSettings, ...settings } : defaultSettings;
+
+    this.RETRY_ATTEMPTS = appliedSettings.retryAttempts;
+    this.RETRY_INTERVALMS = appliedSettings.retryIntervalMS;
+
     this.broker = new MessageBroker(channelName);
     this.messages = new Map<string, boolean>();
   }
