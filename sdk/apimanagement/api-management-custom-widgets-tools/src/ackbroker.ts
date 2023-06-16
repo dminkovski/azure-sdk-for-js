@@ -36,38 +36,39 @@ export class AckBroker {
    * Send Message with Acknowledgment
    * @param event
    */
-  public send(event: ChannelEvent, callback: (event: AckEvent | Error) => void) {
-    const uniqueId = this.generateUniqueId();
-    const ackEvent = {
-      ...event,
-      sender: event.sender || this.broker.getChannelName(),
-      id: uniqueId,
-      needsAck: true,
-    };
-    this.messages.set(uniqueId, false);
+  public send(event: ChannelEvent): Promise<any> {
+    return new Promise<AckEvent | string>((resolve, reject) => {
+      const uniqueId = this.generateUniqueId();
+      const ackEvent = {
+        ...event,
+        sender: event.sender || this.broker.getChannelName(),
+        id: uniqueId,
+        needsAck: true,
+      };
+      this.messages.set(uniqueId, false);
 
-    this.broker.publish(ackEvent);
+      this.broker.publish(ackEvent);
 
-    let retryCount = 0;
-    const retryInterval = setInterval(() => {
-      const isAcknowledged = this.messages.get(uniqueId);
-      if (!isAcknowledged && retryCount < this.RETRY_ATTEMPTS) {
-        retryCount++;
-        this.broker.publish(ackEvent);
-      } else {
-        clearInterval(retryInterval);
-        if (!isAcknowledged) {
-          callback(new Error(`Failed to receive acknowledgement for message: ${uniqueId}`));
-          console.error("Failed to receive acknowledgement for message:", uniqueId);
+      let retryCount = 0;
+      const retryInterval = setInterval(() => {
+        const isAcknowledged = this.messages.get(uniqueId);
+        if (!isAcknowledged && retryCount < this.RETRY_ATTEMPTS) {
+          retryCount++;
+          this.broker.publish(ackEvent);
+        } else {
+          clearInterval(retryInterval);
+          if (!isAcknowledged) {
+            reject(new Error(`Failed to receive acknowledgement for message: ${uniqueId}`));
+          }
         }
-      }
-    }, this.RETRY_INTERVALMS);
+      }, this.RETRY_INTERVALMS);
 
-    this.broker.subscribe(event.topic, (event: AckEvent) => {
-      if (event.id == uniqueId && event.needsAck) {
-        this.messages.set(uniqueId, true);
-        callback({ ...ackEvent, needsAck: false });
-      }
+      this.broker.subscribe(event.topic, (event: AckEvent) => {
+        if (event.id == uniqueId && event.needsAck) {
+          this.messages.set(uniqueId, true);
+          resolve({ ...event, needsAck: false });
+        }
+      });
     });
   }
 }
