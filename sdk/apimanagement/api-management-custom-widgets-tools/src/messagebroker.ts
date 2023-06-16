@@ -11,6 +11,12 @@ export interface ChannelEvent {
   sender: string;
   message: string;
 }
+export interface PublishParams {
+  topic: string;
+  sender: string;
+  senderOverride?: string;
+  message: string;
+}
 
 /**
  * A class wrapping broadcasting communication between widgets.
@@ -56,7 +62,7 @@ export class MessageBroker {
     const topicSubscriptions = this.subscriptions.get(event.topic)!;
     const subscribers = Array.from(topicSubscriptions);
     subscribers.forEach((callback) => {
-      if (event.sender !== this.getChannelName()) {
+      if (event.sender !== this.getSenderName()) {
         callback(event);
       }
     });
@@ -70,13 +76,25 @@ export class MessageBroker {
   private sendStoredMessages(topic: string, callback: (event: ChannelEvent) => void) {
     const storedMessages = this.storedMessages.get(topic)!;
     storedMessages.forEach((message) => {
-      if (message.sender !== this.getChannelName()) {
+      if (message.sender !== this.getSenderName()) {
         callback(message);
       }
     });
   }
 
-  private getChannelName(): string {
+  /**
+   * Returns name of the broadcast channel
+   * @returns string
+   */
+  public getChannelName(): string {
+    return this.channel.name;
+  }
+
+  /**
+   * Return the name of the current sender
+   * @returns string
+   */
+  public getSenderName(): string {
     return `${window.location.pathname}`;
   }
 
@@ -86,7 +104,7 @@ export class MessageBroker {
    * @param callback
    * @returns boolean
    */
-  public subscribe(topic: string, callback: (event: ChannelEvent) => void): boolean {
+  public subscribe(topic: string, callback: (event: ChannelEvent | any) => void): boolean {
     this.saveSubscriptionToTopic(topic);
     const topicSubscriptions = this.subscriptions.get(topic)!;
 
@@ -104,15 +122,13 @@ export class MessageBroker {
 
   /**
    * Publish a message to a topic
-   * @param topic
-   * @param message
-   * @param senderOverride
+   * @param params
    */
-  public publish(topic: string, message: string, senderOverride?: string): void {
+  public publish(params: PublishParams | any): void {
+    const { senderOverride } = params || { senderOverride: false };
     this.channel.postMessage({
-      topic,
-      message,
-      sender: senderOverride || this.getChannelName(),
+      ...params,
+      sender: senderOverride || this.getSenderName(),
     });
   }
 }
