@@ -131,4 +131,12 @@ export class MessageBroker {
       sender: senderOverride || this.getSenderName(),
     });
   }
+
+  /**
+   * Close channel
+   * @returns Promise<void>
+   */
+  public close(): Promise<void> {
+    return this.channel.close();
+  }
 }

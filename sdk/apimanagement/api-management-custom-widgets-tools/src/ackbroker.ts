@@ -79,4 +79,12 @@ export class AckBroker {
       });
     });
   }
+
+  /**
+   * Close broker channel
+   * @returns Promise<void>
+   */
+  public close(): Promise<void> {
+    return this.broker.close();
+  }
 }
